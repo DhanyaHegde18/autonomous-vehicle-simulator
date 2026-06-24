@@ -1,0 +1,16 @@
+# Outputs
+outputs/
+*.png
+*.mp4
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.env
+venv/
+
+# GCP — NEVER commit
+*.json
+service_account*.json
+gcp_key*
