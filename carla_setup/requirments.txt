@@ -1,0 +1,8 @@
+carla==0.9.15
+numpy
+pygame
+matplotlib
+scipy
+networkx
+pyyaml
+opencv-python
