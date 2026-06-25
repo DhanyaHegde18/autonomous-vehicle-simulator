@@ -1,6 +1,7 @@
-# tests/test_dashboard.py
 import sys
-sys.path.append('..')
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from dashboard.monitor import Dashboard
 
 class MockLocation:
