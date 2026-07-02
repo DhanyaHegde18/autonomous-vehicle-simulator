@@ -1,46 +1,81 @@
-import numpy as np
 import cv2
+import numpy as np
+
+
+def region_of_interest(image):
+    """
+    Masks the image to keep only the road region.
+    """
+    height, width = image.shape
+
+    mask = np.zeros_like(image)
+
+    polygon = np.array([[
+        (0, height),
+        (width, height),
+        (int(width * 0.6), int(height * 0.6)),
+        (int(width * 0.4), int(height * 0.6))
+    ]], np.int32)
+
+    cv2.fillPoly(mask, polygon, 255)
+
+    return cv2.bitwise_and(image, mask)
 
 
 def average_lines(image, lines):
-    left_lines = []
-    right_lines = []
+    """
+    Average all detected lane lines into one left and one right lane.
+    """
 
-    for line in lines:
-        x1, y1, x2, y2 = line[0]
+    left_fit = []
+    right_fit = []
 
-        if x2 == x1:
-            continue  # Skip vertical lines
+    if lines is None:
+        return []
+
+    # Convert to (N,4)
+    lines = np.array(lines).reshape(-1, 4)
+
+    for x1, y1, x2, y2 in lines:
+
+        if x1 == x2:
+            continue
 
         slope = (y2 - y1) / (x2 - x1)
         intercept = y1 - slope * x1
 
         if slope < -0.3:
-            left_lines.append((slope, intercept))
+            left_fit.append((slope, intercept))
         elif slope > 0.3:
-            right_lines.append((slope, intercept))
+            right_fit.append((slope, intercept))
 
-    def make_line(image, params):
-        slope, intercept = np.mean(params, axis=0)
+    lane_lines = []
 
-        h = image.shape[0]
-        y1 = h
-        y2 = int(h * 0.6)
+    if left_fit:
+        lane_lines.append(make_line(image, np.mean(left_fit, axis=0)))
 
-        x1 = int((y1 - intercept) / slope)
-        x2 = int((y2 - intercept) / slope)
+    if right_fit:
+        lane_lines.append(make_line(image, np.mean(right_fit, axis=0)))
 
-        return [(x1, y1, x2, y2)]
+    return lane_lines
 
-    averaged = []
 
-    if left_lines:
-        averaged.append(make_line(image, left_lines))
+def make_line(image, line):
+    """
+    Converts slope and intercept into line coordinates.
+    """
 
-    if right_lines:
-        averaged.append(make_line(image, right_lines))
+    slope, intercept = line
 
-    return averaged
+    height = image.shape[0]
+
+    y1 = height
+    y2 = int(height * 0.6)
+
+    x1 = int((y1 - intercept) / slope)
+    x2 = int((y2 - intercept) / slope)
+
+    return (x1, y1, x2, y2)
 
 
 def detect_lanes(image_path):
@@ -55,59 +90,71 @@ def detect_lanes(image_path):
 
     output = image.copy()
 
-    # Convert to grayscale
+    # -------------------------
+    # Step 1: Grayscale
+    # -------------------------
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # Blur image
+    # -------------------------
+    # Step 2: Gaussian Blur
+    # -------------------------
     blur = cv2.GaussianBlur(gray, (5, 5), 0)
 
-    # Detect edges
+    # -------------------------
+    # Step 3: Edge Detection
+    # -------------------------
     edges = cv2.Canny(blur, 50, 150)
 
-    # Region of Interest
-    height, width = edges.shape
+    # -------------------------
+    # Step 4: ROI
+    # -------------------------
+    cropped = region_of_interest(edges)
 
-    mask = np.zeros_like(edges)
-
-    polygon = np.array([[
-        (0, height),
-        (width, height),
-        (int(width * 0.60), int(height * 0.60)),
-        (int(width * 0.40), int(height * 0.60))
-    ]], np.int32)
-
-    cv2.fillPoly(mask, polygon, 255)
-
-    cropped = cv2.bitwise_and(edges, mask)
-
-    # Hough Line Transform
+    # -------------------------
+    # Step 5: Hough Transform
+    # -------------------------
     lines = cv2.HoughLinesP(
         cropped,
         rho=2,
         theta=np.pi / 180,
-        threshold=100,
+        threshold=50,
         minLineLength=40,
-        maxLineGap=5
+        maxLineGap=100
     )
 
-    if lines is None:
-        print("No lane lines detected.")
-        return output
-
+    # -------------------------
+    # Step 6: Average lanes
+    # -------------------------
     averaged_lines = average_lines(image, lines)
 
-    for line in averaged_lines:
-        x1, y1, x2, y2 = line[0]
-        cv2.line(output, (x1, y1), (x2, y2), (0, 255, 0), 5)
+    # -------------------------
+    # Step 7: Draw lanes
+    # -------------------------
+    for x1, y1, x2, y2 in averaged_lines:
+        cv2.line(
+            output,
+            (x1, y1),
+            (x2, y2),
+            (0, 255, 0),
+            5
+        )
 
     return output
 
 
 if __name__ == "__main__":
+
+    print("Lane Detection Started...")
+
     result = detect_lanes("sample_road.jpg")
 
-    cv2.imshow("Lane Detection", result)
     cv2.imwrite("lane_output.jpg", result)
+
+    print("Lane Detection Completed.")
+    print("Output saved as lane_output.jpg")
+
+    cv2.imshow("Original Image", cv2.imread("sample_road.jpg"))
+    cv2.imshow("Detected Lanes", result)
 
     cv2.waitKey(0)
     cv2.destroyAllWindows()
