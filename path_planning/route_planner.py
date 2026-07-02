@@ -12,7 +12,6 @@ from path_planning.waypoint_utils import (
     convert_path_to_waypoints
 )
 
-
 class Node:
     def __init__(self, position):
 
