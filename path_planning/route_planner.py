@@ -6,7 +6,7 @@ A* Path Planning Algorithm
 
 import heapq
 
-from waypoint_utils import (
+from path_planning.waypoint_utils import (
     manhattan_distance,
     get_neighbors,
     convert_path_to_waypoints

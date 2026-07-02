@@ -5,7 +5,10 @@ Controls the CARLA vehicle using PID controllers.
 """
 
 import math
-import carla
+try:
+    import carla
+except ImportError:
+    carla = None  # running offline without CARLA
 
 from control.pid_controller import PIDController
 

@@ -6,3 +6,4 @@ scipy
 networkx
 pyyaml
 opencv-python
+ultralytics
